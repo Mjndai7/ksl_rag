@@ -1,17 +1,29 @@
+from typing import Optional
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
-
-client = QdrantClient(
-    url="http://localhost:6333"
-)
-
-COLLECTION_NAME = "documents"
+from app.core.settings import settings
 
 
-def init_qdrant(
-    dimension=384,
-):
+_client: Optional[QdrantClient] = None
+
+COLLECTION_NAME = settings.QDRANT_COLLECTION
+
+
+def get_qdrant_client() -> QdrantClient:
+    global _client
+    if _client is None:
+        _client = QdrantClient(
+            url=settings.QDRANT_URL,
+            timeout=60,
+            check_compatibility=False,
+        )
+    return _client
+
+
+def init_qdrant(dimension: int = 384):
+    client = get_qdrant_client()
 
     existing = [
         c.name

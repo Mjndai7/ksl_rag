@@ -7,6 +7,8 @@ from googleapiclient.http import MediaIoBaseDownload
 
 import io
 
+from app.core.settings import settings
+
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
@@ -64,18 +66,12 @@ class GoogleDriveClient:
                 pageSize=page_size,
                 supportsAllDrives=True,
                 includeItemsFromAllDrives=True,
-                fields="""
-                    files(
-                        id,
-                        name,
-                        mimeType,
-                        createdTime,
-                        modifiedTime,
-                        owners,
-                        webViewLink,
-                        parents
-                    )
-                """,
+                fields=(
+                    "files("
+                    "id,name,mimeType,createdTime,modifiedTime,"
+                    "owners,webViewLink,parents"
+                    ")"
+                ),
             )
             .execute()
         )
@@ -150,6 +146,7 @@ class GoogleDriveClient:
             )
             downloaded.append(path)
 
+
         return downloaded
 
 # simple search by name, not recursive
@@ -182,7 +179,7 @@ class GoogleDriveClient:
 if __name__ == "__main__":
 
     client = GoogleDriveClient(
-        credentials_path="credentials/google_service_account.json"
+        credentials_path=settings.GOOGLE_CREDENTIALS_PATH
     )
 
     pdfs = client.list_pdfs()

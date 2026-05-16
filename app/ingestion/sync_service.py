@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 import hashlib
 from app.core.settings import settings
 from app.ingestion.drive_client import GoogleDriveClient
@@ -8,19 +7,15 @@ from app.db.postgres import SessionLocal
 from app.db.models import Document
 from app.vectorstore.indexing import upsert_chunks
 from app.chunking.splitter import chunk_text
-from app.embeddings.embedder import embeded_chunks
+from app.embeddings.embedder import embed_chunks
 
 class IngestionSyncService:
     def __init__(self, credentials_path: str):
         self.drive = GoogleDriveClient(credentials_path=credentials_path)
     
     # utility to hash content for deduplication
-
-
     def file_hash(self, text: str):
-        return hashlib.sha256(text.encode("utf-8")).hexdigest(
-
-        )
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
     
     def document_exists(self, checksum: str):
         db = SessionLocal()
@@ -36,8 +31,7 @@ class IngestionSyncService:
             db.close()
 
     
-    def store_document_metadata(self, title, source, content):
-        checksum = self.file_hash(content)
+    def store_document_metadata(self, title: str, source: str, content: str, checksum: str):
         db = SessionLocal()
 
         try:
@@ -49,6 +43,10 @@ class IngestionSyncService:
             )
             db.add(doc)
             db.commit()
+            return doc
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
     

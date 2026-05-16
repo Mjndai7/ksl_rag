@@ -1,4 +1,4 @@
-from sqlalchemy import Column,String
+from sqlalchemy import Column, String, Text
 from sqlalchemy.orm import declarative_base
 import uuid
 
@@ -11,14 +11,10 @@ class Document(Base):
     id = Column(
         String,
         primary_key=True,
-        default=lambda:
-            str(uuid.uuid4())
+        default=lambda: str(uuid.uuid4()),
     )
 
     title = Column(String)
     source = Column(String)
-
-    checksum = Column(
-        String,
-        unique=True,
-    )
+    checksum = Column(String, unique=True)
+    content = Column(Text)
