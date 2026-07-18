@@ -16,13 +16,13 @@ def get_qdrant_client() -> QdrantClient:
     if _client is None:
         _client = QdrantClient(
             url=settings.QDRANT_URL,
-            timeout=60,
+            timeout=120,
             check_compatibility=False,
         )
     return _client
 
 
-def init_qdrant(dimension: int = 384):
+def init_qdrant(dimension: int = 1024):
     client = get_qdrant_client()
 
     existing = [

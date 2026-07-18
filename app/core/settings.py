@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # Qdrant
     QDRANT_URL: str
     QDRANT_COLLECTION: str = "documents"
-    QDRANT_VECTOR_SIZE: int = 384
+    QDRANT_VECTOR_SIZE: int = 1024
     QDRANT_DISTANCE: str = "Cosine"
 
     # Neo4j
@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     GOOGLE_CREDENTIALS_PATH: str
     GOOGLE_DRIVE_FOLDER_ID: str
 
-    # Cloud LLM settings
-    OPENAI_API_KEY: str | None = None
-    OPENAI_API_BASE: str = "https://api.openai.com/v1"
-    OPENAI_MODEL: str = "gpt-4o-mini"
-    OPENAI_TEMPERATURE: float = 0.0
+    # Cloud LLM settings (Alibaba Model Studio / DashScope)
+    ALIBABA_API_KEY: str | None = None
+    ALIBABA_API_BASE: str = "https://ws-i7chuxgi4u3czoo8.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+    ALIBABA_MODEL: str = "qwen3.6-flash"
+    ALIBABA_TEMPERATURE: float = 0.0
 
     class Config:
         env_file = ".env"

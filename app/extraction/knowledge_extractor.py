@@ -17,7 +17,7 @@ def _extract_json(content: str) -> dict:
     """Extract JSON from LLM response, handling markdown code blocks."""
     if not content or not content.strip():
         logger.warning("Empty response from LLM")
-        return {"triples": []}
+        return {"entities": [], "triples": []}
     
     # Strip markdown code blocks if present
     content = re.sub(r'```json\s*', '', content)
@@ -31,28 +31,34 @@ def _extract_json(content: str) -> dict:
             return json.loads(match.group())
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON: {e}\nContent: {content[:500]}")
-            return {"triples": []}
+            return {"entities": [], "triples": []}
     
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON: {e}\nContent: {content[:500]}")
-        return {"triples": []}
+        return {"entities": [], "triples": []}
 
 
-def extract_relations(text, max_retries: int = 3):
-    """Extract relations from text with retry logic."""
+def extract_knowledge(text: str, max_retries: int = 3):
+    """Extract both entities and relations in a single API call."""
     prompt = f"""
-Extract knowledge triples.
+Extract entities and knowledge triples from this text.
 
-Return JSON:
+Return JSON with both entities and triples:
 
 {{
-  "triples":[
+  "entities": [
     {{
-      "subject":"",
-      "relation":"",
-      "object":""
+      "name": "",
+      "type": ""
+    }}
+  ],
+  "triples": [
+    {{
+      "subject": "",
+      "relation": "",
+      "object": ""
     }}
   ]
 }}
@@ -80,5 +86,5 @@ Text:
         except Exception as e:
             logger.error(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
             if attempt == max_retries - 1:
-                logger.error("All retries exhausted, returning empty relations")
-                return {"triples": []}
+                logger.error("All retries exhausted, returning empty results")
+                return {"entities": [], "triples": []}

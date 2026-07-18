@@ -1,5 +1,7 @@
 from pathlib import Path
 import hashlib
+import time
+import logging
 from app.core.settings import settings
 from app.ingestion.drive_client import GoogleDriveClient
 from app.parser.pdf_parser import parse_pdf
@@ -8,6 +10,9 @@ from app.db.models import Document
 from app.vectorstore.indexing import upsert_chunks
 from app.chunking.splitter import chunk_text
 from app.embeddings.embedder import embed_chunks
+from app.graph.graph_builder import graph_builder
+
+logger = logging.getLogger(__name__)
 
 class IngestionSyncService:
     def __init__(self, credentials_path: str):
@@ -54,29 +59,36 @@ class IngestionSyncService:
     # single file ingestion flow: download, parse, deduplicate, store metadata, chunk, embed, index
     def process_pdf(self, pdf_path: Path, metadata: dict):
         
-        print(f"Processing {pdf_path.name}")
+        logger.info(f"Processing {pdf_path.name}")
 
         # parse pdf
+        start_time = time.time()
         text = parse_pdf(str(pdf_path))
+        logger.info(f"[TIMING] PDF parsing: {time.time() - start_time:.2f}s")
 
         if not text.strip():
-            print("Empty file skipped")
+            logger.info("Empty file skipped")
             return
         # deduplication check
         checksum = self.file_hash(text)
         if self.document_exists(checksum):
-            print(f"{pdf_path.name} already exists, skipping")
+            logger.info(f"{pdf_path.name} already exists, skipping")
             return
 
 
         # Chunk, embed, index
+        start_time = time.time()
         chunks = chunk_text(text)
+        logger.info(f"[TIMING] Chunking: {time.time() - start_time:.2f}s ({len(chunks)} chunks)")
 
         if not chunks:
             return
 
+        start_time = time.time()
         vectors = embed_chunks(chunks)
+        logger.info(f"[TIMING] Embedding: {time.time() - start_time:.2f}s")
 
+        start_time = time.time()
         upsert_chunks(
             chunks=chunks,
             embeddings=vectors,
@@ -86,6 +98,16 @@ class IngestionSyncService:
                 "source_link": metadata.get("webViewLink"),
             },
         )
+        logger.info(f"[TIMING] Vector indexing: {time.time() - start_time:.2f}s")
+        
+        logger.info("[GRAPH] Building knowledge graph from text")
+
+        start_time = time.time()
+        graph_results = graph_builder.build_graph_from_chunks(
+            chunks=chunks,
+            document_id=metadata["id"]
+        )
+        logger.info(f"[TIMING] Graph building: {time.time() - start_time:.2f}s")
 
         # persist metadata and content for reference
         self.store_document_metadata(
@@ -95,7 +117,8 @@ class IngestionSyncService:
             checksum=checksum,
         )
         print(f"Ingested {pdf_path.name} with {len(chunks)} chunks")
-
+        print(f"Chunks: {len(chunks)}, Graph Results: {graph_results}")
+    
 
     # folder sync flow: list files, for each file check if exists, if not process
     def sync_drive_folder(self, folder_id=None):
@@ -126,7 +149,7 @@ class IngestionSyncService:
 
 if __name__ == "__main__":
     service = IngestionSyncService(
-        credentials_path="credentials/qubo-426217-6ebaa2216a16.json"
+        credentials_path=settings.GOOGLE_CREDENTIALS_PATH
     )
     service.sync_drive_folder(folder_id=settings.GOOGLE_DRIVE_FOLDER_ID)
             
