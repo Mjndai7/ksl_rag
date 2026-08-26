@@ -9,7 +9,6 @@ env/
 ENV/
 .env
 .env.*
-!.env.docker
 data/raw/*
 !data/raw/.gitkeep
 *.pdf
