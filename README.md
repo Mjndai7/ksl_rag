@@ -56,7 +56,7 @@ The system uses **Alibaba Model Studio** for both embeddings (`text-embedding-v4
 
 ### Implemented Features
 
-✅ **Ingestion Pipeline**
+**Ingestion Pipeline**
 - Google Drive integration with service account authentication
 - PDF parsing using PyMuPDF
 - Text chunking with overlap
@@ -67,18 +67,18 @@ The system uses **Alibaba Model Studio** for both embeddings (`text-embedding-v4
 - Metadata storage in PostgreSQL
 - Document deduplication via checksums
 
-✅ **Retrieval Pipeline**
+**Retrieval Pipeline**
 - Vector search (top-5 results)
 - Graph search (top-10 entity matches)
 - Context merging with deduplication
 - Hybrid retrieval combining both approaches
 
-✅ **Generation Pipeline**
+**Generation Pipeline**
 - RAG prompt construction
 - LLM answer generation using Alibaba Model Studio
 - Context-grounded responses (refuses to answer if context insufficient)
 
-✅ **API Endpoints**
+**API Endpoints**
 - Health check
 - Document ingestion
 - Query with hybrid retrieval
@@ -86,7 +86,7 @@ The system uses **Alibaba Model Studio** for both embeddings (`text-embedding-v4
 - Graph building from text/chunks
 - Graph statistics
 
-✅ **Database Integration**
+**Database Integration**
 - PostgreSQL for metadata and deduplication
 - Qdrant for vector storage and similarity search
 - Neo4j for knowledge graph storage and traversal

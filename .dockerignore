@@ -12,7 +12,6 @@ ENV/
 !.env.docker
 data/raw/*
 !data/raw/.gitkeep
-credentials/
 *.pdf
 *.json
 !postman_collection.json

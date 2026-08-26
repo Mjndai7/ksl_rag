@@ -1,33 +1,29 @@
 #!/bin/bash
 
-# =============================================================================
-# GraphRAG Deployment Script
-# =============================================================================
 # This script helps deploy the GraphRAG engine with Docker Compose
-# =============================================================================
 
 set -e  # Exit on error
 
-echo "🚀 GraphRAG Deployment Script"
+echo " GraphRAG Deployment Script"
 echo "================================"
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
-    echo "❌ Error: Docker is not running. Please start Docker first."
+    echo " Error: Docker is not running. Please start Docker first."
     exit 1
 fi
 
 # Check if .env.docker exists
 if [ ! -f .env.docker ]; then
-    echo "❌ Error: .env.docker file not found!"
+    echo " Error: .env.docker file not found!"
     echo "Please create .env.docker with your production configuration."
     exit 1
 fi
 
 # Check if credentials exist
 if [ ! -d "credentials" ]; then
-    echo "⚠️  Warning: credentials directory not found."
-    echo "Google Drive integration may not work without credentials."
+    echo " Warning: credentials directory not found."
+    echo " Google Drive integration may not work without credentials."
 fi
 
 # Function to show status
@@ -50,10 +46,10 @@ show_logs() {
 # Parse command line arguments
 case "${1:-}" in
     "start")
-        echo "🔄 Starting GraphRAG services..."
+        echo " Starting GraphRAG services..."
         docker compose up -d
         show_status
-        echo "✅ GraphRAG is running!"
+        echo " GraphRAG is running!"
         echo ""
         echo "📍 Access points:"
         echo "   - API:          http://localhost:8000"
@@ -63,13 +59,13 @@ case "${1:-}" in
         ;;
     
     "stop")
-        echo "🛑 Stopping GraphRAG services..."
+        echo " Stopping GraphRAG services..."
         docker compose down
-        echo "✅ All services stopped."
+        echo " All services stopped."
         ;;
     
     "restart")
-        echo "🔄 Restarting GraphRAG services..."
+        echo " Restarting GraphRAG services..."
         docker compose restart
         show_status
         ;;
@@ -85,28 +81,28 @@ case "${1:-}" in
     "build")
         echo "🔨 Building Docker images..."
         docker compose build
-        echo "✅ Build complete!"
+        echo " Build complete!"
         ;;
     
     "clean")
-        echo "⚠️  WARNING: This will remove all containers and volumes!"
+        echo " WARNING: This will remove all containers and volumes!"
         echo "All data will be lost. Are you sure? (yes/no)"
         read -r response
         if [[ "$response" == "yes" ]]; then
             docker compose down -v
-            echo "✅ All containers and volumes removed."
+            echo " All containers and volumes removed."
         else
-            echo "❌ Operation cancelled."
+            echo " Operation cancelled."
         fi
         ;;
     
     "init-db")
-        echo "🗄️  Initializing databases..."
+        echo " Initializing databases..."
         docker compose up -d postgres neo4j qdrant
-        echo "⏳ Waiting for databases to be ready..."
+        echo " Waiting for databases to be ready..."
         sleep 10
         show_status
-        echo "✅ Databases are running!"
+        echo " Databases are running!"
         ;;
     
     "help"|*)
