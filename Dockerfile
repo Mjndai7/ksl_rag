@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy credentials for Google Drive access
+COPY credentials/ /app/credentials/
+
 # Create data directory for downloaded PDFs
 RUN mkdir -p data/raw
 

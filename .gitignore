@@ -1,4 +1,3 @@
-credentials/
 *.json
 .env
 ksl_env/

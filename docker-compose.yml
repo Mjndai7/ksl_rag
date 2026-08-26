@@ -1,17 +1,5 @@
-# =============================================================================
-# GraphRAG Docker Compose - Production Deployment
-# =============================================================================
-# Usage:
-#   docker compose up -d          # Start all services
-#   docker compose logs -f        # Follow logs
-#   docker compose down           # Stop all services
-#   docker compose down -v        # Stop and remove volumes (WARNING: deletes data)
-# =============================================================================
-
 services:
-  # ---------------------------------------------------------------------------
   # PostgreSQL - Document metadata & deduplication
-  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: graphrag-postgres
@@ -33,9 +21,8 @@ services:
     networks:
       - graphrag-network
 
-  # ---------------------------------------------------------------------------
+  
   # Neo4j - Knowledge graph storage
-  # ---------------------------------------------------------------------------
   neo4j:
     image: neo4j:5-community
     container_name: graphrag-neo4j
@@ -62,9 +49,7 @@ services:
     networks:
       - graphrag-network
 
-  # ---------------------------------------------------------------------------
   # Qdrant - Vector embeddings storage
-  # ---------------------------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:v1.13.2
     container_name: graphrag-qdrant
@@ -83,9 +68,7 @@ services:
     networks:
       - graphrag-network
 
-  # ---------------------------------------------------------------------------
   # GraphRAG Application - FastAPI engine
-  # ---------------------------------------------------------------------------
   app:
     build:
       context: .
@@ -117,9 +100,7 @@ services:
     networks:
       - graphrag-network
 
-# =============================================================================
 # Volumes - Persistent storage for databases
-# =============================================================================
 volumes:
   postgres_data:
     driver: local
@@ -134,9 +115,7 @@ volumes:
   app_data:
     driver: local
 
-# =============================================================================
 # Networks
-# =============================================================================
 networks:
   graphrag-network:
     driver: bridge
