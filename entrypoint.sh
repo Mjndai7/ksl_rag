@@ -3,9 +3,13 @@ set -e
 
 # Write Google Drive credentials from environment variable
 if [ -n "$GOOGLE_CREDENTIALS_JSON" ]; then
-    echo "$GOOGLE_CREDENTIALS_JSON" > /app/credentials/qubo-426217-6ebaa2216a16.json
+    mkdir -p "$(dirname "${GOOGLE_CREDENTIALS_PATH:-/app/credentials/service_account.json}")"
+    echo "$GOOGLE_CREDENTIALS_JSON" > "${GOOGLE_CREDENTIALS_PATH:-/app/credentials/service_account.json}"
     echo "✓ Google credentials written from environment variable"
 fi
 
-# Start the application
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Apply database migrations before serving traffic
+alembic upgrade head
+
+# Start the application (Railway provides $PORT)
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"

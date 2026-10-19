@@ -1,80 +1,67 @@
+import logging
+
+from app.core.settings import settings
 from app.embeddings.embedder import embed_query
 from app.graph.cypher_queries import cypher_queries
+from app.retrieval.context_merger import merge_contexts
 from app.vectorstore.indexing import semantic_search
+
+logger = logging.getLogger(__name__)
+
+
+def _format_evidence(evidence: list[dict]) -> str:
+    refs = []
+    for ev in evidence[:2]:
+        ref = ev["title"].removesuffix(".pdf")
+        if ev.get("section"):
+            ref += f", {ev['section']}"
+        refs.append(ref)
+    return f" ({'; '.join(refs)})" if refs else ""
 
 
 class HybridRetriever:
-    def __init__(self):
-        self.top_k = 5
-        self.graph_limit = 10
+    def __init__(self, top_k: int | None = None, graph_limit: int | None = None):
+        self.top_k = top_k or settings.VECTOR_TOP_K
+        self.graph_limit = graph_limit or settings.GRAPH_TOP_K
 
-    
-    def vector_retrieve(self, query: str):
-        vector = embed_query(query)
-
-        hits = semantic_search(
-            query_vector=vector,
-            limit=self.top_k,
-        )
-
-        contexts = []
-
-        for hit in hits:
-            contexts.append({
+    def vector_retrieve(self, query: str) -> list[dict]:
+        hits = semantic_search(query_vector=embed_query(query), limit=self.top_k)
+        return [
+            {
                 "text": hit.payload.get("text", ""),
                 "source": "vector",
-                "score": getattr(hit, "score", None),
-                "metadata": hit.payload
-            })
-        
-        return contexts
-    
-    def graph_retrieve(self, query: str):
-        graph_results = cypher_queries.search_entity(entity=query, limit=self.graph_limit)
+                "score": hit.score,
+                "metadata": {k: v for k, v in hit.payload.items() if k != "text"},
+            }
+            for hit in hits
+        ]
 
+    def graph_retrieve(self, query: str) -> list[dict]:
         contexts = []
-
-        for item in graph_results:
+        for item in cypher_queries.search_relations(query, limit=self.graph_limit):
+            relation = item["relation"].replace("_", " ").lower()
             contexts.append({
-                "text": f"{item['source']} → {item['relation']} → {item['target']}",
+                "text": f"{item['source']} {relation} {item['target']}{_format_evidence(item['evidence'])}",
                 "source": "graph",
-                "metadata": item
+                "score": item["score"],
+                "metadata": item,
             })
-        
         return contexts
-    
 
-    def merge_contexts(self, vector_context, graph_context):
-
-        merged = []
-
-        seen = set()
-
-        def add(item):
-            key = item["text"]
-            if key not in seen:
-                seen.add(key)
-                merged.append(item)
-
-        for v in vector_context:
-            add(v)
-
-        for g in graph_context:
-            add(g)
-        return merged
-    
-    def retrieve(self, query: str):
+    def retrieve(self, query: str) -> dict:
         vector_context = self.vector_retrieve(query)
-        graph_context = self.graph_retrieve(query)
-
-        merged_contexts = self.merge_contexts(vector_context, graph_context)
+        try:
+            graph_context = self.graph_retrieve(query)
+        except Exception as e:
+            logger.warning("Graph retrieval failed, continuing with vector results only: %s", e)
+            graph_context = []
 
         return {
             "query": query,
             "vector_hits": vector_context,
             "graph_hits": graph_context,
-            "merged_contexts": merged_contexts
+            "merged_contexts": merge_contexts(vector_context, graph_context),
         }
 
+
 hybrid_retriever = HybridRetriever()
-        

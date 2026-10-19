@@ -1,71 +1,37 @@
-from app.db.neo4j import driver
+from app.db.neo4j import session
+
 
 class GraphAlgorithms:
-    def graph_stats(self):
-        """
-        Calculate and return statistics about the graph.
-        """
+    def graph_stats(self) -> dict:
         query = """
-        MATCH (n)
-        WITH count(n) as total_nodes
-        MATCH ()-[r]->()
-        RETURN total_nodes, count(r) as total_relationships
+        CALL { MATCH (n) RETURN count(n) AS total_nodes }
+        CALL { MATCH ()-[r]->() RETURN count(r) AS total_relationships }
+        CALL { MATCH (e:Entity) RETURN count(e) AS entities }
+        CALL { MATCH (d:Document) RETURN count(d) AS documents }
+        RETURN total_nodes, total_relationships, entities, documents
         """
+        with session() as s:
+            return s.run(query).single().data()
 
-        with driver.session() as session:
-            result = session.run(query).single()
-
-            if not result:
-                return {
-                    "total_nodes": 0,
-                    "total_relationships": 0
-                }
-            return {
-                "total_nodes": result["total_nodes"],
-                "total_relationships": result["total_relationships"]
-            }
-    
-
-    def top_connected_entities(self, limit: int = 10):
-        """
-        Return the top N most connected entities in the graph.
-        """
+    def top_connected_entities(self, limit: int = 10) -> list[dict]:
         query = """
-        MATCH (n:Entity)-[r]-()
-        RETURN n.name AS entity, count(r) AS degree
+        MATCH (n:Entity)-[r]-(:Entity)
+        RETURN n.name AS entity, n.type AS type, count(r) AS degree
         ORDER BY degree DESC
         LIMIT $limit
         """
-        with driver.session() as session:
-            result = session.run(query, {"limit": limit})
+        with session() as s:
+            return [r.data() for r in s.run(query, {"limit": limit})]
 
-            return [
-                {
-                    "entity": record["entity"],
-                    "degree": record["degree"]
-                }
-                for record in result
-            ]
-    
-    def relationship_distribution(self):
-        """
-        Return the distribution of relationship types in the graph.
-        """
+    def relationship_distribution(self, limit: int = 20) -> list[dict]:
         query = """
-        MATCH ()-[r]->()
-        RETURN r.type AS relationship_type, count(r) AS count, type(r) AS relation
+        MATCH (:Entity)-[r]->(:Entity)
+        RETURN type(r) AS relation, count(r) AS count
         ORDER BY count DESC
+        LIMIT $limit
         """
-        with driver.session() as session:
-            result = session.run(query)
+        with session() as s:
+            return [r.data() for r in s.run(query, {"limit": limit})]
 
-            return [
-                {
-                    "relationship_type": record["relationship_type"],
-                    "relation": record["relation"],
-                    "count": record["count"]
-                }
-                for record in result
-            ]
 
 graph_algorithms = GraphAlgorithms()

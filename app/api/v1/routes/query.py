@@ -1,43 +1,56 @@
 from fastapi import APIRouter
-from pydantic import BaseModel  
+from pydantic import BaseModel, Field
 
-from app.retrieval.hybrid_retriever import hybrid_retriever
-
-from app.generation.answer_engine import AnswerEngine
+from app.workflows.langgraph_flow import run_query
 
 router = APIRouter()
 
 
 class QueryRequest(BaseModel):
-    query: str
+    query: str = Field(..., min_length=3, max_length=2000)
+
+
+def _sources(contexts: list[dict]) -> list[dict]:
+    sources = []
+    for n, item in enumerate(contexts, start=1):
+        meta = item.get("metadata") or {}
+        sources.append({
+            "n": n,
+            "type": item["source"],
+            "score": item.get("score"),
+            "document": meta.get("document_name"),
+            "section": meta.get("section_label"),
+            "link": meta.get("source_link"),
+            "text": item["text"],
+        })
+    return sources
 
 
 @router.post("/query")
 def query_docs(request: QueryRequest):
-    # Step 1: Retrieve relevant contexts
-    retrieval_result = hybrid_retriever.retrieve(request.query)
-
-    # Step 2: Extract contexts from retrieval result
-    merged_contexts = [
-        item["text"] for item in retrieval_result["merged_contexts"]
-    ]
-
-    # Step 3: Generate answer using the retrieved contexts
-    answer = AnswerEngine().answer(
-        question=request.query,
-        context_chunks=merged_contexts
-    )
-
-    # Step 4: Return the query results
+    """Hybrid retrieval + grounded answer (LangGraph retrieval workflow)."""
+    result = run_query(request.query)
     return {
         "query": request.query,
-        "answer": answer,
-
+        "answer": result["answer"],
+        "cited_sources": result["cited_sources"],
+        "sources": _sources(result["merged_contexts"]),
+        "warnings": result["warnings"],
         "retrieval": {
-            "vector_hits": retrieval_result["vector_hits"],
-            "graph_hits": retrieval_result["graph_hits"],
-            "merged_contexts": retrieval_result["merged_contexts"]
-
-        }
+            "vector_hits": len(result["vector_hits"]),
+            "graph_hits": len(result["graph_hits"]),
+        },
     }
 
+
+@router.post("/retrieve")
+def retrieve(request: QueryRequest):
+    """Retrieval only, no LLM call: useful for debugging and doesn't use LLM quota."""
+    result = run_query(request.query, with_answer=False)
+    return {
+        "query": request.query,
+        "sources": _sources(result["merged_contexts"]),
+        "warnings": result["warnings"],
+        "vector_hits": result["vector_hits"],
+        "graph_hits": result["graph_hits"],
+    }

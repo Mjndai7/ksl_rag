@@ -13,28 +13,26 @@ This guide walks you through deploying the GraphRAG engine using Docker Compose.
 
 ### 1. Configure Environment
 
-The `.env.docker` file is already configured with Docker service names. Update the passwords:
+`.env.docker` holds secrets and is git-ignored. Create it from the template:
 
 ```bash
-# Edit the production environment file
+cp .env.docker.example .env.docker
 nano .env.docker
 ```
 
 **Required changes:**
 - `POSTGRES_PASSWORD` - Set a strong password
 - `NEO4J_PASSWORD` - Set a strong password
-- Update `POSTGRES_URL` to match the new password
+- Update `POSTGRES_URL` to match the new password (URL-encode special characters)
+- `OPENROUTER_API_KEY` - Your OpenRouter key
+
+The container runs `alembic upgrade head` on start, so the Postgres schema is created and migrated automatically.
 
 ### 2. Prepare Credentials
 
-Ensure your Google Drive credentials are in place:
-
-```bash
-# Check if credentials exist
-ls credentials/
-
-# Should contain: qubo-426217-6ebaa2216a16.json
-```
+Put the Google Drive service-account JSON at the path named by `GOOGLE_CREDENTIALS_PATH`
+(the `credentials/` directory is mounted read-only into the container). On Railway, set
+`GOOGLE_CREDENTIALS_JSON` to the file's contents instead; the entrypoint writes it to that path.
 
 ### 3. Deploy
 

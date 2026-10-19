@@ -1,63 +1,52 @@
 from typing import List
 import logging
 
-from openai import OpenAI
+from app.core.openrouter import get_openrouter_client
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Use Alibaba's text-embedding-v4 via OpenAI-compatible endpoint
-embedding_client = OpenAI(
-    api_key=settings.ALIBABA_API_KEY,
-    base_url=settings.ALIBABA_API_BASE
-)
 
-EMBEDDING_MODEL = "text-embedding-v4"
-EMBEDDING_DIMENSION = 1024
+class EmbeddingError(RuntimeError):
+    pass
 
 
-def embed_text(text: str) -> List[float]:
-    """Embed a single document text."""
-    response = embedding_client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=text,
+def _embed(inputs: List[str]) -> List[List[float]]:
+    response = get_openrouter_client().embeddings.create(
+        model=settings.EMBEDDING_MODEL,
+        input=inputs,
     )
-    return response.data[0].embedding
+    data = sorted(response.data, key=lambda d: d.index)
+    vectors = [d.embedding for d in data]
+
+    if len(vectors) != len(inputs):
+        raise EmbeddingError(f"Expected {len(inputs)} embeddings, got {len(vectors)}")
+    for v in vectors:
+        if len(v) != settings.EMBEDDING_DIM:
+            raise EmbeddingError(
+                f"Embedding model {settings.EMBEDDING_MODEL} returned {len(v)} dims, "
+                f"but EMBEDDING_DIM={settings.EMBEDDING_DIM}"
+            )
+    return vectors
 
 
 def embed_query(query: str) -> List[float]:
     """Embed a retrieval query."""
-    response = embedding_client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=query,
-    )
-    return response.data[0].embedding
+    return _embed([query])[0]
 
 
 def embed_chunks(chunks: List[str]) -> List[List[float]]:
-    """Batch embed a list of text chunks."""
-    all_embeddings = []
-    batch_size = 10  # Alibaba API max batch size is 10
+    """Batch embed text chunks. Raises instead of storing placeholder vectors on failure."""
+    all_embeddings: List[List[float]] = []
+    batch_size = settings.EMBEDDING_BATCH_SIZE
 
     for i in range(0, len(chunks), batch_size):
         batch = chunks[i:i + batch_size]
         try:
-            response = embedding_client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=batch,
-            )
-            # Sort by index to maintain order
-            sorted_data = sorted(response.data, key=lambda x: x.index)
-            all_embeddings.extend([d.embedding for d in sorted_data])
+            all_embeddings.extend(_embed(batch))
+        except EmbeddingError:
+            raise
         except Exception as e:
-            logger.error(f"Embedding batch {i//batch_size} failed: {e}")
-            # Fallback: embed one by one
-            for chunk in batch:
-                try:
-                    emb = embed_text(chunk)
-                    all_embeddings.append(emb)
-                except Exception as ex:
-                    logger.error(f"Single embedding failed: {ex}")
-                    all_embeddings.append([0.0] * EMBEDDING_DIMENSION)
+            raise EmbeddingError(f"Embedding batch {i // batch_size} failed: {e}") from e
 
-    return all_embeddings  
+    return all_embeddings

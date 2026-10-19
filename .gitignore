@@ -1,4 +1,16 @@
-*.json
+# secrets
 .env
-ksl_env/
+.env.docker
+*.json
+credentials/
 
+# local runtime
+ksl_env/
+__pycache__/
+*.pyc
+.pytest_cache/
+qdrant
+storage/
+data/raw/uploads/
+.DS_Store
+.qdrant-initialized
